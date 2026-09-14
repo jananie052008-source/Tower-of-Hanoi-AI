@@ -1,10 +1,11 @@
 import heapq
+import time
 from collections import deque
 
 class HanoiStateSpace:
     """
     Models Tower of Hanoi as an explicit state-space search problem.
-    Demonstrates state mapping: Peg configurations mapped directly to search graph nodes.
+    State representation: Tuple of 3 tuples (Peg A, Peg B, Peg C).
     """
     def __init__(self, num_disks=3):
         self.num_disks = num_disks
@@ -12,7 +13,7 @@ class HanoiStateSpace:
         self.goal_state = ((), (), tuple(range(num_disks, 0, -1)))
 
     def get_valid_moves(self, state):
-        """Generates legal state transitions from current state configuration."""
+        """Generates legal state transitions from current configuration."""
         successors = []
         for src in range(3):
             if not state[src]:
@@ -34,8 +35,13 @@ class HanoiStateSpace:
         """Admissible heuristic: count of disks not yet on target Peg C."""
         return self.num_disks - len(state[2])
 
+    def render_pegs(self, state):
+        """Formats the tuple state into a clean string representation."""
+        return f"A: {list(state[0])} | B: {list(state[1])} | C: {list(state[2])}"
+
 
 def breadth_first_search(problem):
+    """Uninformed Breadth-First Search."""
     start = problem.start_state
     goal = problem.goal_state
     queue = deque([(start, [])])
@@ -57,6 +63,7 @@ def breadth_first_search(problem):
 
 
 def a_star_search(problem):
+    """Informed A* Search using displacement heuristic."""
     start = problem.start_state
     goal = problem.goal_state
     counter = 0
@@ -89,17 +96,40 @@ if __name__ == "__main__":
     disks = 3
     hanoi = HanoiStateSpace(num_disks=disks)
     
-    print(f"=== Tower of Hanoi State Space Search (Disks: {disks}) ===")
+    print("=================================================================")
+    print(f"   TOWER OF HANOI STATE-SPACE SEARCH (Disks: {disks})")
+    print("=================================================================\n")
     
+    # Run Algorithms
     bfs_path, bfs_nodes = breadth_first_search(hanoi)
     astar_path, astar_nodes = a_star_search(hanoi)
     
-    print(f"\n[Search Comparison]")
-    print(f"BFS  -> Solution Moves: {len(bfs_path)} | States Expanded: {bfs_nodes}")
-    print(f"A*   -> Solution Moves: {len(astar_path)} | States Expanded: {astar_nodes}\n")
+    # 1. Search Metric Comparison
+    print("[1. Algorithm Comparison]")
+    print(f"BFS (Uninformed) -> Moves: {len(bfs_path)} | Expanded States: {bfs_nodes}")
+    print(f"A*  (Informed)   -> Moves: {len(astar_path)} | Expanded States: {astar_nodes}\n")
 
-    print("State Transition Graph Traversal Path:")
-    print(f"Start State: {hanoi.start_state}")
+    # 2. Step-by-step Solution Traversal
+    print("[2. Step-by-Step State Transition Path]")
+    print(f"Start State : {hanoi.render_pegs(hanoi.start_state)}")
     for step, (move, state) in enumerate(astar_path, 1):
-        print(f"Step {step}: {move} ==> New State: {state}")
-        # Final state space search execution
+        print(f"Step {step:<2}: {move:<32} ==> State: {hanoi.render_pegs(state)}")
+    
+    # 3. Scaling Performance Benchmark
+    print("\n[3. Performance Benchmark Across Disk Configurations]")
+    print(f"{'Disks':<6}| {'Algorithm':<10}| {'Moves':<8}| {'Nodes Expanded':<16}| {'Time (s)':<10}")
+    print("-" * 55)
+
+    for d in [3, 4, 5]:
+        p = HanoiStateSpace(num_disks=d)
+        
+        t0 = time.perf_counter()
+        b_path, b_nodes = breadth_first_search(p)
+        t_bfs = time.perf_counter() - t0
+        print(f"{d:<6}| {'BFS':<10}| {len(b_path):<8}| {b_nodes:<16}| {t_bfs:.5f}")
+
+        t0 = time.perf_counter()
+        a_path, a_nodes = a_star_search(p)
+        t_astar = time.perf_counter() - t0
+        print(f"{d:<6}| {'A*':<10}| {len(a_path):<8}| {a_nodes:<16}| {t_astar:.5f}")
+        print("-" * 55)
