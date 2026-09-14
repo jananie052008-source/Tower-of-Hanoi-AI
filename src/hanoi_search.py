@@ -102,3 +102,4 @@ if __name__ == "__main__":
     print(f"Start State: {hanoi.start_state}")
     for step, (move, state) in enumerate(astar_path, 1):
         print(f"Step {step}: {move} ==> New State: {state}")
+        # Final state space search execution
