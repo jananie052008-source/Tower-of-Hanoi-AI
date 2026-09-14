@@ -1,22 +1,37 @@
-# Tower of Hanoi - State Space Search Model
+# Project 13: Tower of Hanoi Search Model
 
-This repository models the classic **Tower of Hanoi** puzzle as an explicit **State-Space Search Problem** for the *Foundations of Artificial Intelligence* assignment.
+**Course**: Foundations of Artificial Intelligence (FAI IA 1)
 
-## 1. State Space Mapping
+## Project Overview
+This project models the classic **Tower of Hanoi** puzzle as an explicit **State-Space Search Problem** using BFS and A* Search algorithms instead of direct recursion.
 
-- **State Representation**: Tuple of 3 tuples `(Peg_A, Peg_B, Peg_C)` where numbers represent disk sizes (1 = smallest, N = largest).
-- **Start State (N=3)**: `((3, 2, 1), (), ())`
-- **Goal State (N=3)**: `((), (), (3, 2, 1))`
-- **State Complexity**: For N disks on 3 pegs, total reachable states $S = 3^N$. For N=3, total states = 27.
+---
 
-## 2. Implemented Algorithms
+## 1. Mapping Puzzle to State-Space Search
 
-1. **Breadth-First Search (BFS)**: Uninformed search exploring graph levels to guarantee optimal sequence ($2^N - 1$ moves).
-2. **A* Search**: Informed search using an admissible heuristic (count of disks remaining off target Peg C).
+| Search Concept | Puzzle Mapping |
+| :--- | :--- |
+| **State Space** | All valid peg arrangements $(A, B, C)$ where disk order is preserved (larger under smaller). Total states = $3^N = 27$ for 3 disks. |
+| **Initial State** | `((3, 2, 1), (), ())` — All disks on Peg A. |
+| **Goal State** | `((), (), (3, 2, 1))` — All disks moved to Peg C. |
+| **Actions / Transitions** | Move the top disk of one peg to another peg, provided it lands on a larger disk or an empty peg. |
+| **Path Cost** | $g(n) = 1$ per move (unweighted unit action cost). |
 
-## 3. How to Run
+---
 
-Execute the script from the root folder:
+## 2. Requirements Implementation
+
+- **State Representation**: Enforced via tuples `(Peg_A, Peg_B, Peg_C)` for immutability and efficient hash lookup.
+- **Search Return**: Returns both the optimal step-by-step move sequence and intermediate state configurations.
+- **Algorithms**:
+  - **BFS (Uninformed)**: Guarantees optimal path length ($2^N - 1 = 7$ moves for 3 disks).
+  - **A* Search (Informed)**: Uses heuristic $h(n) = N - \text{disks on Peg C}$ to guide search efficiently.
+
+---
+
+## 3. How to Run & Verify
+
+Run the Python script from the project root:
 
 ```bash
 python src/hanoi_search.py
