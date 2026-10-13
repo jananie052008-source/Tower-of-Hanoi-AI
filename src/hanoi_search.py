@@ -1,17 +1,18 @@
 
-from collections import deque
 import heapq
+from collections import deque
 
 
 class HanoiStateSpace:
-    """Tower of Hanoi represented as a state-space search problem."""
+    """State-space model for the Tower of Hanoi problem."""
 
     def __init__(self, num_disks=3):
-        if not isinstance(num_disks, int) or isinstance(num_disks, bool) or num_disks < 1:
-            raise ValueError("Number of disks must be a positive integer")
+        if num_disks < 1:
+            raise ValueError("Number of disks must be at least 1")
 
         self.num_disks = num_disks
-        self.initial_state = (
+        # Each peg is a tuple ordered from bottom to top.
+        self.start_state = (
             tuple(range(num_disks, 0, -1)),
             (),
             (),
@@ -22,9 +23,9 @@ class HanoiStateSpace:
             tuple(range(num_disks, 0, -1)),
         )
 
-    def get_successors(self, state):
-        """Return every legal next state and the move that creates it."""
-        successors = []
+    def get_valid_moves(self, state):
+        """Return all legal moves as (successor_state, description)."""
+        moves = []
 
         for source in range(3):
             if not state[source]:
@@ -36,125 +37,126 @@ class HanoiStateSpace:
                 if source == destination:
                     continue
 
+                # A larger disk cannot be placed on a smaller disk.
                 if state[destination] and state[destination][-1] < disk:
                     continue
 
-                new_pegs = [list(peg) for peg in state]
-                new_pegs[source].pop()
-                new_pegs[destination].append(disk)
+                new_state = [list(peg) for peg in state]
+                new_state[source].pop()
+                new_state[destination].append(disk)
+                successor = tuple(tuple(peg) for peg in new_state)
 
-                next_state = tuple(tuple(peg) for peg in new_pegs)
-                move = (disk, source, destination)
-                successors.append((next_state, move))
+                description = (
+                    f"move disk {disk} from "
+                    f"{'ABC'[source]} to {'ABC'[destination]}"
+                )
+                moves.append((successor, description))
 
-        return successors
+        return moves
+
+    def heuristic(self, state):
+        """Admissible heuristic: disks not yet on the goal peg."""
+        return self.num_disks - len(state[2])
+
+    def render_pegs(self, state):
+        """Return a readable representation of the three pegs."""
+        return {
+            "A": list(state[0]),
+            "B": list(state[1]),
+            "C": list(state[2]),
+        }
 
 
-def bfs_search(problem):
-    """Find an optimal solution using breadth-first search."""
-    start = problem.initial_state
+def breadth_first_search(problem):
+    """Find an optimal solution using BFS."""
+    start = problem.start_state
     goal = problem.goal_state
 
-    queue = deque([start])
-    parent = {start: (None, None)}
+    queue = deque([(start, [])])
+    visited = {start}
+    nodes_expanded = 0
 
     while queue:
-        state = queue.popleft()
+        current, path = queue.popleft()
+        nodes_expanded += 1
 
-        if state == goal:
-            break
+        if current == goal:
+            return path, nodes_expanded
 
-        for next_state, move in problem.get_successors(state):
-            if next_state not in parent:
-                parent[next_state] = (state, move)
-                queue.append(next_state)
+        for successor, move in problem.get_valid_moves(current):
+            if successor not in visited:
+                visited.add(successor)
+                queue.append(
+                    (successor, path + [(move, successor)])
+                )
 
-    if goal not in parent:
-        return [], 0
-
-    path = []
-    state = goal
-
-    while parent[state][0] is not None:
-        previous_state, move = parent[state]
-        path.append((move, state))
-        state = previous_state
-
-    path.reverse()
-    return path, len(path)
+    return None, nodes_expanded
 
 
 def a_star_search(problem):
-    """Find an optimal solution using A* search."""
-    start = problem.initial_state
+    """Find a solution using A* search."""
+    start = problem.start_state
     goal = problem.goal_state
 
-    def heuristic(state):
-        # Each disk outside the goal peg must be moved at least once.
-        return problem.num_disks - len(state[2])
+    counter = 0
+    queue = [(problem.heuristic(start), counter, start, [], 0)]
+    best_cost = {start: 0}
+    nodes_expanded = 0
 
-    frontier = [(heuristic(start), 0, start)]
-    parent = {start: (None, None)}
-    cost_so_far = {start: 0}
-    counter = 1
+    while queue:
+        _, _, current, path, cost = heapq.heappop(queue)
 
-    while frontier:
-        _, cost, state = heapq.heappop(frontier)
-
-        if cost != cost_so_far[state]:
+        if cost != best_cost.get(current):
             continue
 
-        if state == goal:
-            break
+        nodes_expanded += 1
 
-        for next_state, move in problem.get_successors(state):
+        if current == goal:
+            return path, nodes_expanded
+
+        for successor, move in problem.get_valid_moves(current):
             new_cost = cost + 1
 
-            if new_cost < cost_so_far.get(next_state, float("inf")):
-                cost_so_far[next_state] = new_cost
-                parent[next_state] = (state, move)
-
-                priority = new_cost + heuristic(next_state)
-                heapq.heappush(
-                    frontier,
-                    (priority, counter, next_state),
-                )
+            if new_cost < best_cost.get(successor, float("inf")):
+                best_cost[successor] = new_cost
                 counter += 1
+                priority = new_cost + problem.heuristic(successor)
 
-    if goal not in parent:
-        return [], 0
+                heapq.heappush(
+                    queue,
+                    (
+                        priority,
+                        counter,
+                        successor,
+                        path + [(move, successor)],
+                        new_cost,
+                    ),
+                )
 
-    path = []
-    state = goal
-
-    while parent[state][0] is not None:
-        previous_state, move = parent[state]
-        path.append((move, state))
-        state = previous_state
-
-    path.reverse()
-    return path, len(path)
+    return None, nodes_expanded
 
 
-if __name__ == "__main__":
-    problem = HanoiStateSpace(num_disks=3)
+def depth_first_search(problem):
+    """Find a solution using DFS; it is not guaranteed to be optimal."""
+    start = problem.start_state
+    goal = problem.goal_state
 
-    for name, search in (
-        ("BFS", bfs_search),
-        ("A*", a_star_search),
-    ):
-        path, cost = search(problem)
-        print(f"\n{name} Search")
-        print(f"Number of moves: {cost}")
+    stack = [(start, [])]
+    visited = {start}
+    nodes_expanded = 0
 
-        for step, (move, state) in enumerate(path, start=1):
-            disk, source, destination = move
-            print(
-                f"{step}. Move disk {disk} "
-                f"from peg {chr(65 + source)} "
-                f"to peg {chr(65 + destination)}"
-            )
+    while stack:
+        current, path = stack.pop()
+        nodes_expanded += 1
 
-        print(f"Goal reached: {bool(path) and path[-1][1] == problem.goal_state}")
+        if current == goal:
+            return path, nodes_expanded
 
-        
+        for successor, move in problem.get_valid_moves(current):
+            if successor not in visited:
+                visited.add(successor)
+                stack.append(
+                    (successor, path + [(move, successor)])
+                )
+
+    return None, nodes_expanded
